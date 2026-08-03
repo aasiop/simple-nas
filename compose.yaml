@@ -1,0 +1,17 @@
+services:
+  sambanas:
+    container_name: {server_name}
+    image: dperson/samba
+    restart: unless-stopped
+
+    ports:
+      - "445:445"
+
+    volumes:
+      - /{path}:/share
+
+    environment:
+      USERID: "1000"
+      GROUPID: "1000"
+
+    command: '-p -n -u "{login};{password}" -s "NAS;/share;yes;no;no;nas"'
