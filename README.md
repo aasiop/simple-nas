@@ -2,33 +2,55 @@ Simple lightweight NAS file server based on Samba running inside a Docker contai
 
 The container uses the `dperson/samba` image and exposes a selected host directory as a network share.
 
-# Requirements
+## Requirements
 - Docker
 - Docker Compose
 - Administrator privileges (`sudo`)
 - A directory for storing NAS data
 
-1. Installation:
-# Install Docker
+Simple lightweight NAS file server based on Samba running inside a Docker container. Works on any system capable of running Docker
+
+The container uses the `dperson/samba` image and exposes a selected host directory as a network share.
+
+## Requirements
+- Docker
+- Docker Compose
+- Administrator privileges (`sudo`)
+- A directory for storing NAS data
+
+# Installation:
+Install Docker
+```
 curl -fsSL https://get.docker.com | sudo sh
+```
 
-# (optional) Allow Docker usage without sudo
+(optional) Allow Docker usage without sudo
+```
 sudo usermod -aG docker $USER
+```
 
-# Verify installation
+Verify installation
+```
 docker --version
+```
 
-# Clone repository
+Clone repository
+```
 git clone https://github.com/aasiop/REPOSITORY.git
+```
 
-# Enter repository
+Enter repository
+```
 cd REPOSITORY
+```
 
-# Configure compose.yaml
+## Configure compose.yaml
+```
 nano compose.yaml
+```
 
 
-~
+```
 services:
   sambanas:
     container_name: {server_name}
@@ -46,37 +68,43 @@ services:
       GROUPID: "1000"
 
     command: '-p -n -u "{login};{password}" -s "NAS;/share;yes;no;no;nas"'
-~
+```
 
 # Configuration info:
 Replace:
-{server_name} - Docker container name
-{path}        - NAS data directory on the host system
-{login}       - Samba username
-{password}    - Samba password
+
+| Variable | Description |
+|----------|-------------|
+| `{server_name}` | Docker container name |
+| `{path}` | NAS data directory on the host system |
+| `{login}` | Samba username |
+| `{password}` | Samba password |
 
 restart:
-unless-stopped	- only manual stop
-always		- self explainatory
-on-failure	- restarts when container exits with an error
-no		- no automatic restart
+- `unless-stopped` - automatically restarts unless manually stopped
+- `always` - always restarts the container
+- `on-failure` - restarts when the container exits with an error
+- `no` - no automatic restart
 
 "NAS;/share;yes;no;no;nas":
-/share 	- directory inside container
-yes	- share is enabled
-no	- write only
-no	- guest only
-nas	- witch user is allowed to access data
+- `/share` - directory inside the container
+- `yes` - share is enabled
+- `no` - read-only mode disabled (write access enabled)
+- `no` - guest access disabled
+- `nas` - user allowed to access the data
 
 
 
 # Start the container
-docker compose up -d
+`docker compose up -d`
 
-2. Accessing the NAS share:
-# From Windows explorator type:
+# Accessing the NAS share:
+From Windows explorator type:
 \\SERVER_IP\NAS
 
-# Use login and password
+Example:
+`\\192.168.1.50\NAS`
+
+Then use login and password
 
 Done !
