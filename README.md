@@ -8,16 +8,6 @@ The container uses the `dperson/samba` image and exposes a selected host directo
 - Administrator privileges (`sudo`)
 - A directory for storing NAS data
 
-Simple lightweight NAS file server based on Samba running inside a Docker container. Works on any system capable of running Docker
-
-The container uses the `dperson/samba` image and exposes a selected host directory as a network share.
-
-## Requirements
-- Docker
-- Docker Compose
-- Administrator privileges (`sudo`)
-- A directory for storing NAS data
-
 # Installation:
 Install Docker
 ```
@@ -36,18 +26,16 @@ docker --version
 
 Clone repository
 ```
-git clone https://github.com/aasiop/REPOSITORY.git
+git clone https://github.com/aasiop/simple-nas.git
 ```
 
 Enter repository
 ```
-cd REPOSITORY
+cd simple-nas
 ```
 
 ## Configure compose.yaml
-```
-nano compose.yaml
-```
+`nano compose.yaml`  
 
 
 ```
@@ -86,7 +74,10 @@ restart:
 - `on-failure` - restarts when the container exits with an error
 - `no` - no automatic restart
 
+The share format is:  
+NAME;PATH;VISIBLE;WRITABLE;GUEST;USER  
 "NAS;/share;yes;no;no;nas":
+
 - `/share` - directory inside the container
 - `yes` - share is enabled
 - `no` - read-only mode disabled (write access enabled)
@@ -99,7 +90,7 @@ restart:
 `docker compose up -d`
 
 # Accessing the NAS share:
-From Windows explorator type:
+From Windows Explorer type:
 \\SERVER_IP\NAS
 
 Example:
@@ -107,4 +98,4 @@ Example:
 
 Then use login and password
 
-Done !
+Done!
