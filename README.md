@@ -34,6 +34,11 @@ Create your configuration file:
 cp .env.example .env
 ```
 
+Change permissions:
+```bash
+chmod 600 .env
+```
+
 Edit the configuration:  
 ```bash
 nano .env
