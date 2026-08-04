@@ -1,6 +1,6 @@
 services:
   sambanas:
-    container_name: {server_name}
+    container_name: ${SERVER_NAME}
     image: dperson/samba
     restart: unless-stopped
 
@@ -8,10 +8,10 @@ services:
       - "445:445"
 
     volumes:
-      - /{path}:/share
+      - ${HOST_PATH}:/share
 
     environment:
-      USERID: "1000"
-      GROUPID: "1000"
+      USERID: "${USER_ID}"
+      GROUPID: "${GROUP_ID}"
 
-    command: '-p -n -u "{login};{password}" -s "NAS;/share;yes;no;no;nas"'
+    command: '-p -n -u "${SAMBA_USER};${SAMBA_PASSWORD}" -s "NAS;/share;yes;no;no;${SAMBA_USER}"'

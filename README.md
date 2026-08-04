@@ -1,47 +1,87 @@
+# Simple NAS
+
 Simple lightweight NAS file server based on Samba running inside a Docker container. Works on any system capable of running Docker
 
 The container uses the `dperson/samba` image and exposes a selected host directory as a network share.
 
+## Features
+
+- Docker-based deployment
+- Persistent storage
+- Easy configuration
+- Lightweight
+
 ## Requirements
 - Docker
 - Docker Compose
-- Administrator privileges (`sudo`)
-- A directory for storing NAS data
 
-# Installation:
-Install Docker
-```
-curl -fsSL https://get.docker.com | sudo sh
-```
+---
 
-(optional) Allow Docker usage without sudo
-```
-sudo usermod -aG docker $USER
+## Installation:
+
+Clone the repository:  
+```bash
+git clone https://github.com/aasiop/simple-nas.git cd simple-nas
 ```
 
-Verify installation
-```
-docker --version
-```
-
-Clone repository
-```
-git clone https://github.com/aasiop/simple-nas.git
-```
-
-Enter repository
-```
+Enter repository:  
+```bash
 cd simple-nas
 ```
 
-## Configure compose.yaml
-`nano compose.yaml`  
-
-
+Create your configuration file:  
+```bash
+cp .env.example .env
 ```
+
+Edit the configuration:  
+```bash
+nano .env
+```
+
+Start the container:
+```bash
+docker compose up -d
+```
+
+Verify that the container is running:
+```bash
+docker ps
+```
+
+---
+
+## Configuration
+
+Create a `.env` file from `.env.example`.
+
+Example:
+```env
+SERVER_NAME     = home-nas
+HOST_PATH       = /mnt/storage
+SAMBA_USER      = nas
+SAMBA_PASSWORD  = StrongPassword123
+USER_ID         = 1000
+GROUP_ID        = 1000
+```
+
+| Variable | Description |
+|----------|-------------|
+| `SERVER_NAME` | Docker container name |
+| `HOST_PATH` | Directory on the host to share |
+| `SAMBA_USER` | Samba username |
+| `SAMBA_PASSWORD` | Samba password |
+| `USER_ID` | Linux user ID |
+| `GROUP_ID` | Linux group ID |
+
+---
+
+## compose.yaml configuration
+
+```yaml
 services:
   sambanas:
-    container_name: {server_name}
+    container_name: ${SERVER_NAME}
     image: dperson/samba
     restart: unless-stopped
 
@@ -49,53 +89,70 @@ services:
       - "445:445"
 
     volumes:
-      - /{path}:/share
+      - ${HOST_PATH}:/share
 
     environment:
-      USERID: "1000"
-      GROUPID: "1000"
+      USERID: "${USER_ID}"
+      GROUPID: "${GROUP_ID}"
 
-    command: '-p -n -u "{login};{password}" -s "NAS;/share;yes;no;no;nas"'
+    command: '-p -n -u "${SAMBA_USER};${SAMBA_PASSWORD}" -s "NAS;/share;yes;no;no;${SAMBA_USER}"'
+
 ```
 
-# Configuration info:
-Replace:
 
-| Variable | Description |
-|----------|-------------|
-| `{server_name}` | Docker container name |
-| `{path}` | NAS data directory on the host system |
-| `{login}` | Samba username |
-| `{password}` | Samba password |
+### Restart Policy
+| Policy | Description |
+|--------|-------------|
+| `unless-stopped` | Restart unless manually stopped |
+| `always` | Always restart |
+| `on-failure` | Restart only after errors |
+| `no` | Disable automatic restart |
 
-restart:
-- `unless-stopped` - automatically restarts unless manually stopped
-- `always` - always restarts the container
-- `on-failure` - restarts when the container exits with an error
-- `no` - no automatic restart
+### Share configuration
+The `-s` option follows the format:
+```text
+NAME;PATH;VISIBLE;WRITABLE;GUEST;USER
+```
 
-The share format is:  
-NAME;PATH;VISIBLE;WRITABLE;GUEST;USER  
-"NAS;/share;yes;no;no;nas":
+Current configuration:
+```text
+NAS;/share;yes;no;no;${SAMBA_USER}
+```
+| Value | Description |
+|-------|-------------|
+| `NAS` | Share name visible on the network |
+| `/share` | Directory inside the container |
+| `yes` | Share is visible |
+| `no` | Guest write access disabled |
+| `no` | Guest login disabled |
+| `${SAMBA_USER}` | User allowed to access the share |
 
-- `/share` - directory inside the container
-- `yes` - share is enabled
-- `no` - read-only mode disabled (write access enabled)
-- `no` - guest access disabled
-- `nas` - user allowed to access the data
+## Accessing the Share:
 
-
-
-# Start the container
-`docker compose up -d`
-
-# Accessing the NAS share:
-From Windows Explorer type:
+### Windows
+Open File Explorer and enter:
+```text
 \\SERVER_IP\NAS
+```
 
 Example:
-`\\192.168.1.50\NAS`
+```text
+\\192.168.1.50\NAS
+```
 
-Then use login and password
+Then enter the configured Samba username and password.
 
-Done!
+### Linux
+Open your file manager and connect to:
+```text
+smb://SERVER_IP/NAS
+```
+
+or mount it manually:
+```bash
+sudo mount -t cifs //SERVER_IP/NAS /mnt/nas
+```
+
+## License
+This project is licensed under the MIT License.
+
