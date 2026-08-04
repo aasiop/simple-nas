@@ -21,7 +21,7 @@ The container uses the `dperson/samba` image and exposes a selected host directo
 
 Clone the repository:  
 ```bash
-git clone https://github.com/aasiop/simple-nas.git cd simple-nas
+git clone https://github.com/aasiop/simple-nas.git
 ```
 
 Enter repository:  
