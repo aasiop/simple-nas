@@ -210,6 +210,13 @@ or mount it manually:
 sudo mount -t cifs //SERVER_IP/SHARE_NAME /mnt/SHARE_NAME
 ```
 
+### Debug
+If Windows system cannot find shared folder try using:
+```cmd
+net use * /delete
+```
+Warning: This will disconnect all active SMB network connections.
+
 ## License
 This project is licensed under the MIT License.
 
