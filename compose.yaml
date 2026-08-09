@@ -9,9 +9,14 @@ services:
 
     volumes:
       - ${HOST_PATH}:/share
+      - ./smb.conf:/etc/samba/smb.conf:ro
 
     environment:
       USERID: "${USER_ID}"
       GROUPID: "${GROUP_ID}"
 
-    command: '-p -n -u "${SAMBA_USER};${SAMBA_PASSWORD}" -s "NAS;/share;yes;no;no;${SAMBA_USER}"'
+      USER: "${USER_1};${PASSWORD_1}"
+      USER2: "${USER_2};${PASSWORD_2}"
+      #USER3: ...
+
+    command: '-p'

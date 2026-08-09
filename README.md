@@ -2,13 +2,14 @@
 
 Simple lightweight NAS file server based on Samba running inside a Docker container. Works on any system capable of running Docker
 
-The container uses the `dperson/samba` image and exposes a selected host directory as a network share.
+The container uses the `dperson/samba` image and exposes selected host directories as network shares.
 
 ## Features
 
 - Docker-based deployment
 - Persistent storage
-- Easy configuration
+- Multi-user support
+- Multiple shares
 - Lightweight
 
 ## Requirements
@@ -18,6 +19,8 @@ The container uses the `dperson/samba` image and exposes a selected host directo
 ---
 
 ## Installation:
+
+> This project is currently under development. Manual installation is required.
 
 Clone the repository:  
 ```bash
@@ -39,9 +42,19 @@ Change permissions:
 chmod 600 .env
 ```
 
-Edit the configuration:  
+Edit server and users configuration:  
 ```bash
 nano .env
+```
+
+Edit container configuration:  
+```bash
+nano compose.yaml
+```
+
+Edit shares configuration:  
+```bash
+nano smb.conf
 ```
 
 Start the container:
@@ -62,22 +75,29 @@ Create a `.env` file from `.env.example`.
 
 Example:
 ```env
-SERVER_NAME     = home-nas
-HOST_PATH       = /mnt/storage
-SAMBA_USER      = nas
-SAMBA_PASSWORD  = StrongPassword123
-USER_ID         = 1000
-GROUP_ID        = 1000
+SERVER_NAME=home-nas
+HOST_PATH=/mnt/storage
+
+USER_ID=1000
+GROUP_ID=1000
+
+USER_1=alice
+PASSWORD_1=alice1
+
+USER_2=bob
+PASSWORD_2=bob1
+
+...
 ```
 
-| Variable | Description |
-|----------|-------------|
-| `SERVER_NAME` | Docker container name |
+| Variable | Description                    |
+|----------|--------------------------------|
+| `SERVER_NAME` | Docker container name          |
 | `HOST_PATH` | Directory on the host to share |
-| `SAMBA_USER` | Samba username |
-| `SAMBA_PASSWORD` | Samba password |
-| `USER_ID` | Linux user ID |
-| `GROUP_ID` | Linux group ID |
+| `USER_ID` | Linux user ID                  |
+| `GROUP_ID` | Linux group ID                 |
+| `USER_1` | Samba username                 |
+| `PASSWORD_1` | Samba password                 |
 
 ---
 
@@ -95,17 +115,21 @@ services:
 
     volumes:
       - ${HOST_PATH}:/share
+      - ./smb.conf:/etc/samba/smb.conf:ro
 
     environment:
       USERID: "${USER_ID}"
       GROUPID: "${GROUP_ID}"
 
-    command: '-p -n -u "${SAMBA_USER};${SAMBA_PASSWORD}" -s "NAS;/share;yes;no;no;${SAMBA_USER}"'
+      USER: "${USER_1};${PASSWORD_1}"
+      USER2: "${USER_2};${PASSWORD_2}"
+      #USER3: ...
 
+    command: '-p'
 ```
 
 
-### Restart Policy
+#### Restart Policy
 | Policy | Description |
 |--------|-------------|
 | `unless-stopped` | Restart unless manually stopped |
@@ -113,36 +137,64 @@ services:
 | `on-failure` | Restart only after errors |
 | `no` | Disable automatic restart |
 
-### Share configuration
-The `-s` option follows the format:
-```text
-NAME;PATH;VISIBLE;WRITABLE;GUEST;USER
+#### adding users
+add another line for another user:
+```yaml
+USER3: "${USER_3};${PASSWORD_3}"
 ```
 
-Current configuration:
+## adding shares
+
+Shares are configured in `smb.conf`, example:
+
 ```text
-NAS;/share;yes;no;no;${SAMBA_USER}
+[Public]
+    path = /share/public
+
+    browseable = yes
+    guest ok = no
+
+    read only = no
+    write list = alice bob
+
+    valid users = alice bob
+
+    force user = smbuser
+    force group = smb
+    create mask = 0660
+    directory mask = 0770
+
+
+[Documents]
+    path = /share/documents
+
+    browseable = yes
+
+    ...
 ```
-| Value | Description |
-|-------|-------------|
-| `NAS` | Share name visible on the network |
-| `/share` | Directory inside the container |
-| `yes` | Share is visible |
-| `no` | Guest write access disabled |
-| `no` | Guest login disabled |
-| `${SAMBA_USER}` | User allowed to access the share |
+| Policy | Description                                             |
+|--------|---------------------------------------------------------|
+| `[Public]` | Network share name                                      |
+| `path` | Subdirectory to share                                   |
+| `browseable` | Whether the share is visible when browsing the server   |
+| `guest ok` | Whether guest access is allowed                         |
+| `read only` | Whether the share is read-only                          |
+| `write list` | Users allowed to write to the share (even if read only) |
+| `valid users` | Users allowed to access the share                                                       |
+
+
 
 ## Accessing the Share:
 
 ### Windows
 Open File Explorer and enter:
 ```text
-\\SERVER_IP\NAS
+\\SERVER_IP\SHARE_NAME
 ```
 
 Example:
 ```text
-\\192.168.1.50\NAS
+\\192.168.1.50\SHARE_NAME
 ```
 
 Then enter the configured Samba username and password.
@@ -150,12 +202,12 @@ Then enter the configured Samba username and password.
 ### Linux
 Open your file manager and connect to:
 ```text
-smb://SERVER_IP/NAS
+smb://SERVER_IP/SHARE_NAME
 ```
 
 or mount it manually:
 ```bash
-sudo mount -t cifs //SERVER_IP/NAS /mnt/nas
+sudo mount -t cifs //SERVER_IP/SHARE_NAME /mnt/SHARE_NAME
 ```
 
 ## License
