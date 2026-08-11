@@ -59,12 +59,11 @@ def add_to_shares(l):
         share[a] = b
     return share
 
-
 def read_smb_shares():
     shares = []
     lines=[]
     start=False
-    with open("smb.conf") as f:
+    with open("smb.conf", "r", encoding="utf-8") as f:
         for line in f:
             i=line.strip()
             if start and i!="":
@@ -124,7 +123,51 @@ def change_env(e):
                 break
 
 def change_smb(e):
-    print()
+    request_type = e.get("type")
+
+    payload = e.get("payload")
+    if payload.get('name') == 'global':
+        print("global is forbidden share name, sorry :(")
+    else:
+        if request_type=="add":
+            writelist=payload.get("writeList")
+            validusers=payload.get("validUsers")
+            with open("smb.conf", "a", encoding="utf-8") as f:
+                f.write(f"""
+
+
+[{payload.get("name")}]
+    path = {payload.get("path")}
+        
+    browseable = {"yes" if payload.get("browseable") else "no"}
+    guest ok = {"yes" if payload.get("guest") else "no"}
+                
+    read only = {"yes" if payload.get("readonly") else "no"}
+    write list = {" ".join(writelist)}
+                
+    valid users = {" ".join(validusers)}
+        
+    force user = smbuser
+    force group = smb
+    create mask = 0660
+    directory mask = 0770""")
+        elif request_type=="remove":
+            removing=False
+            with open("smb.conf", encoding="utf-8") as f:
+                kept_lines=[]
+                for line in f:
+                    check=line.strip()
+                    if removing and check.startswith("["):
+                        removing=False
+                    if check == f"[{payload.get('name')}]":
+                        removing=True
+                    if not removing:
+                        kept_lines.append(line)
+            while kept_lines and kept_lines[-1].strip() == "": #after last (in order) share deleton removes last empty lines
+                kept_lines.pop()
+            with open("smb.conf", "w", encoding="utf-8") as f:
+                f.writelines(kept_lines)
+
 
 @app.route('/')
 def index():
