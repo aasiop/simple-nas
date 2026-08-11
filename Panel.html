@@ -154,54 +154,53 @@
 <body>
 <div class="wrap">
   <header>
-    <h1>Simple NAS — panel zarządzania</h1>
-    <p>Zmiany wysyłane są na backend (<code>POST /api/events</code>). Po zapisaniu strona przeładowuje się i pokazuje aktualny stan z <code>.env</code> / <code>smb.conf</code>.</p>
+    <h1>Simple NAS - control panel</h1>
   </header>
 
   <div class="grid">
     <section class="card">
-      <h2>Użytkownicy <span class="count" id="users-count">0</span></h2>
+      <h2>Users <span class="count" id="users-count">0</span></h2>
       <div id="users-list"></div>
       <form class="add" id="user-form">
         <div class="row">
           <div class="field">
-            <label for="u-name">Nazwa użytkownika</label>
-            <input type="text" id="u-name" required placeholder="np. alice">
+            <label for="u-name">Username</label>
+            <input type="text" id="u-name" required placeholder="e.g. alice">
           </div>
           <div class="field">
-            <label for="u-pass">Hasło</label>
-            <input type="password" id="u-pass" required placeholder="hasło">
+            <label for="u-pass">Password</label>
+            <input type="password" id="u-pass" required placeholder="password">
           </div>
         </div>
-        <button type="submit" class="submit">+ Dodaj użytkownika</button>
+        <button type="submit" class="submit">+ Add user</button>
       </form>
     </section>
 
     <section class="card">
-      <h2>Udziały (shares) <span class="count" id="shares-count">0</span></h2>
+      <h2>Shares <span class="count" id="shares-count">0</span></h2>
       <div id="shares-list"></div>
       <form class="add" id="share-form">
         <div class="row">
           <div class="field">
-            <label for="s-name">Nazwa udziału</label>
-            <input type="text" id="s-name" required placeholder="np. Public">
+            <label for="s-name">Share name</label>
+            <input type="text" id="s-name" required placeholder="e.g. Public">
           </div>
         </div>
         <div class="row">
           <div class="field">
-            <label for="s-path">Ścieżka (path)</label>
+            <label for="s-path">Path</label>
             <input type="text" id="s-path" required placeholder="/share/public">
           </div>
         </div>
         <div class="row">
           <div class="field">
-            <label for="s-valid">valid users (po przecinku)</label>
+            <label for="s-valid">valid users</label>
             <input type="text" id="s-valid" placeholder="alice,bob">
           </div>
         </div>
         <div class="row">
           <div class="field">
-            <label for="s-write">write list (po przecinku)</label>
+            <label for="s-write">write list</label>
             <input type="text" id="s-write" placeholder="alice,bob">
           </div>
         </div>
@@ -210,7 +209,7 @@
           <label><input type="checkbox" id="s-guest"> guest ok</label>
           <label><input type="checkbox" id="s-readonly"> read only</label>
         </div>
-        <button type="submit" class="submit">+ Dodaj udział</button>
+        <button type="submit" class="submit">+ Add share</button>
       </form>
     </section>
   </div>
@@ -218,13 +217,10 @@
 
 <script>
 
-// Aktualnie wczytani użytkownicy (potrzebne do przełącznika "pokaż hasło")
 let currentUsers = [];
 
-// Nazwy userów, których hasło ma być aktualnie widoczne (jawnie, nie gwiazdkami)
 let revealedPasswords = new Set();
 
-// Pobiera aktualny config z serwera (GET /api/config) i wyświetla go na stronie
 async function loadConfig() {
   const res = await fetch('/api/config');
   const data = await res.json();
@@ -233,24 +229,21 @@ async function loadConfig() {
   showShares(data.shares);
 }
 
-// Zamienia znaki specjalne HTML na bezpieczne odpowiedniki (ochrona przed XSS)
 function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, c => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
   }[c]));
 }
 
-// Ikony oka (SVG, pasują stylem do reszty przycisków - stroke="currentColor")
 const EYE_ICON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
 const EYE_OFF_ICON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a19.7 19.7 0 0 1 5.06-5.94M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 8 11 8a19.79 19.79 0 0 1-3.22 4.44"></path><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>';
 
-// Wyświetla listę użytkowników
 function showUsers(users) {
   const list = document.getElementById('users-list');
   document.getElementById('users-count').textContent = users.length;
 
   if (users.length === 0) {
-    list.innerHTML = '<div class="empty">Brak użytkowników.</div>';
+    list.innerHTML = '<div class="empty">Currently no users added</div>';
     return;
   }
 
@@ -275,13 +268,12 @@ function showUsers(users) {
   }).join('');
 }
 
-// Wyświetla listę udziałów
 function showShares(shares) {
   const list = document.getElementById('shares-list');
   document.getElementById('shares-count').textContent = shares.length;
 
   if (shares.length === 0) {
-    list.innerHTML = '<div class="empty">Brak udziałów.</div>';
+    list.innerHTML = '<div class="empty">Currently no shares configured.</div>';
     return;
   }
 
@@ -305,8 +297,6 @@ function showShares(shares) {
   `).join('');
 }
 
-// Włącza/wyłącza podgląd hasła danego użytkownika (bez zapytania do serwera -
-// hasło już mamy w currentUsers z ostatniego /api/config)
 function togglePassword(username) {
   if (revealedPasswords.has(username)) {
     revealedPasswords.delete(username);
@@ -316,8 +306,6 @@ function togglePassword(username) {
   showUsers(currentUsers);
 }
 
-// Wysyła event do serwera (POST /api/events) i przeładowuje stronę,
-// żeby pobrać świeży config (read_env_users / read_smb_shares wykonają się od nowa)
 async function sendEvent(entity, type, payload) {
   await fetch('/api/events', {
     method: 'POST',

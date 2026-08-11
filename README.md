@@ -10,8 +10,8 @@ The container uses the `dperson/samba` image and exposes selected host directori
 - Persistent storage
 - Multi-user support
 - Multiple shares
+- Web panel
 - Lightweight
-- Web panel (beta)
 
 ## Requirements
 - Docker
@@ -31,16 +31,6 @@ git clone https://github.com/aasiop/simple-nas.git
 Enter repository:  
 ```bash
 cd simple-nas
-```
-
-Create your configuration file:  
-```bash
-cp .env.example .env
-```
-
-Change permissions:
-```bash
-chmod 600 .env
 ```
 
 Edit server and users configuration:  
