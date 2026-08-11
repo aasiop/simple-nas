@@ -11,6 +11,7 @@ The container uses the `dperson/samba` image and exposes selected host directori
 - Multi-user support
 - Multiple shares
 - Lightweight
+- Web panel (beta)
 
 ## Requirements
 - Docker
@@ -183,6 +184,12 @@ Shares are configured in `smb.conf`, example:
 | `valid users` | Users allowed to access the share                                                       |
 
 
+## Web panel and configuration (under development):
+
+Open your web browser and type:
+```text
+http://localhost:8000/
+```
 
 ## Accessing the Share:
 
