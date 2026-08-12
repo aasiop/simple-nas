@@ -1,8 +1,7 @@
 from flask import Flask, jsonify, request, send_from_directory
 import os
-import re
-import configparser
 from dotenv import load_dotenv, dotenv_values, set_key, unset_key
+import subprocess
 
 app = Flask(__name__, static_folder='.', static_url_path='')
 
@@ -182,6 +181,23 @@ def get_config():
         'shares': read_smb_shares(),
     })
 
+@app.route('/api/apply', methods=['POST'])
+def apply_changes():
+    try:
+        result = subprocess.run(
+            ["docker", "compose", "up", "-d", "--force-recreate"],
+            cwd=BASE_DIR,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+    except FileNotFoundError:
+        return jsonify({'ok': False, 'error': 'docker command not found'}), 500
+    except subprocess.TimeoutExpired:
+        return jsonify({'ok': False, 'error': 'command timed out after 60s'}), 500
+
+    ok = result.returncode == 0
+    return jsonify({'ok': ok, 'stdout': result.stdout, 'stderr': result.stderr}), (200 if ok else 500)
 
 @app.route('/api/events', methods=['POST'])
 def post_event():

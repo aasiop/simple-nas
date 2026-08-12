@@ -21,8 +21,6 @@ The container uses the `dperson/samba` image and exposes selected host directori
 
 ## Installation:
 
-> This project is currently under development. Manual installation is required.
-
 Clone the repository:  
 ```bash
 git clone https://github.com/aasiop/simple-nas.git
@@ -33,7 +31,7 @@ Enter repository:
 cd simple-nas
 ```
 
-Edit server and users configuration:  
+Edit server configuration:  
 ```bash
 nano .env
 ```
@@ -41,11 +39,6 @@ nano .env
 Edit container configuration:  
 ```bash
 nano compose.yaml
-```
-
-Edit shares configuration:  
-```bash
-nano smb.conf
 ```
 
 Start the container:
@@ -72,12 +65,6 @@ HOST_PATH=/mnt/storage
 USER_ID=1000
 GROUP_ID=1000
 
-USER_1=alice
-PASSWORD_1=alice1
-
-USER_2=bob
-PASSWORD_2=bob1
-
 ...
 ```
 
@@ -87,8 +74,6 @@ PASSWORD_2=bob1
 | `HOST_PATH` | Directory on the host to share |
 | `USER_ID` | Linux user ID                  |
 | `GROUP_ID` | Linux group ID                 |
-| `USER_1` | Samba username                 |
-| `PASSWORD_1` | Samba password                 |
 
 ---
 

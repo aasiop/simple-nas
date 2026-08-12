@@ -149,6 +149,7 @@
     cursor: pointer;
   }
   button.submit:hover { filter: brightness(1.08); }
+  button.submit:disabled { opacity: 0.6; cursor: default; }
 </style>
 </head>
 <body>
@@ -213,6 +214,11 @@
       </form>
     </section>
   </div>
+
+  <section class="card" style="margin-top: 20px;">
+    <button id="apply-btn" class="submit" style="width: 100%;">Save changes (restart docker container)</button>
+    <div id="apply-status" style="margin-top: 10px; font-size: 12px; color: var(--text-dim);"></div>
+  </section>
 </div>
 
 <script>
@@ -349,6 +355,33 @@ document.getElementById('share-form').addEventListener('submit', function (event
 });
 
 loadConfig();
+
+document.getElementById('apply-btn').addEventListener('click', async function () {
+  const btn = this;
+  const status = document.getElementById('apply-status');
+
+  btn.disabled = true;
+  status.textContent = 'Restarting container...';
+  status.style.color = 'var(--text-dim)';
+
+  try {
+    const res = await fetch('/api/apply', { method: 'POST' });
+    const data = await res.json();
+
+    if (data.ok) {
+      status.textContent = 'Done - container is running with the new config.';
+      status.style.color = 'var(--ok)';
+    } else {
+      status.textContent = 'Error: ' + (data.error || data.stderr || 'unknown error');
+      status.style.color = 'var(--danger)';
+    }
+  } catch (err) {
+    status.textContent = 'Could not reach the server.';
+    status.style.color = 'var(--danger)';
+  } finally {
+    btn.disabled = false;
+  }
+});
 </script>
 
 </body>
