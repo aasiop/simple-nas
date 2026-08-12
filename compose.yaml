@@ -15,8 +15,4 @@ services:
       USERID: "${USER_ID}"
       GROUPID: "${GROUP_ID}"
 
-      USER: "${USER_1};${PASSWORD_1}"
-      USER2: "${USER_2};${PASSWORD_2}"
-      #USER3: ...
-
     command: '-p'

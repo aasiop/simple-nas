@@ -1,5 +1,6 @@
 from flask import Flask, jsonify, request, send_from_directory
 import os
+import re
 from dotenv import load_dotenv, dotenv_values, set_key, unset_key
 import subprocess
 
@@ -120,6 +121,7 @@ def change_env(e):
                 unset_key(".env", "USER_" + str(c))
                 unset_key(".env", "PASSWORD_" + str(c))
                 break
+    sync_compose_users()
 
 def change_smb(e):
     request_type = e.get("type")
@@ -167,6 +169,40 @@ def change_smb(e):
             with open("smb.conf", "w", encoding="utf-8") as f:
                 f.writelines(kept_lines)
 
+def sync_compose_users():
+    config = dotenv_values(".env")
+    users_count = sum(1 for key in config if key.startswith("USER_")) - 1
+
+    with open("compose.yaml", encoding="utf-8") as f:
+        lines = f.readlines()
+
+    new_lines = []
+    skip_blank = False
+
+    for line in lines:
+        stripped = line.strip()
+
+        if re.match(r'^USER\d*:', stripped):
+            continue
+
+        if skip_blank and stripped == "":
+            skip_blank = False
+            continue
+
+        new_lines.append(line)
+        skip_blank = False
+
+        if stripped.startswith("GROUPID:"):
+            indent = line[:len(line) - len(line.lstrip())]
+            if users_count > 0:
+                new_lines.append("\n")
+                for i in range(1, users_count + 1):
+                    key = "USER" if i == 1 else f"USER{i}"
+                    new_lines.append(f'{indent}{key}: "${{USER_{i}}};${{PASSWORD_{i}}}"\n')
+            skip_blank = True
+
+    with open("compose.yaml", "w", encoding="utf-8") as f:
+        f.writelines(new_lines)
 
 @app.route('/')
 def index():
@@ -175,7 +211,6 @@ def index():
 
 @app.route('/api/config', methods=['GET'])
 def get_config():
-    """Zwraca aktualny stan configu (odczytany z .env i smb.conf) do wyświetlenia w panelu."""
     return jsonify({
         'users': read_env_users(),
         'shares': read_smb_shares(),
@@ -201,7 +236,6 @@ def apply_changes():
 
 @app.route('/api/events', methods=['POST'])
 def post_event():
-    """Odbiera event zmiany configu z panelu."""
     event = request.get_json(force=True, silent=True) #gets HTTP json request and coverts it to dict
     if not event:
         return jsonify({'error': 'invalid json'}), 400
