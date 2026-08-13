@@ -4,6 +4,8 @@ Simple lightweight NAS file server based on Samba running inside a Docker contai
 
 The container uses the `dperson/samba` image and exposes selected host directories as network shares.
 
+There is now available web configuration.
+
 ## Features
 
 - Docker-based deployment
@@ -16,6 +18,7 @@ The container uses the `dperson/samba` image and exposes selected host directori
 ## Requirements
 - Docker
 - Docker Compose
+- Flask and dotenv python libraries
 
 ---
 
@@ -33,12 +36,17 @@ cd simple-nas
 
 Edit server configuration:  
 ```bash
-nano .env
+cp .env.example .env
 ```
 
-Edit container configuration:  
+Change permissions 
 ```bash
-nano compose.yaml
+chmod 600 .env
+```
+
+Edit docker configuration:  
+```bash
+nano .env
 ```
 
 Start the container:
@@ -76,94 +84,22 @@ GROUP_ID=1000
 | `GROUP_ID` | Linux group ID                 |
 
 ---
+## Web panel configuration:
+> WARNING web configuration don't require password. It's still in development! Close it after making changes!
 
-## compose.yaml configuration
-
-```yaml
-services:
-  sambanas:
-    container_name: ${SERVER_NAME}
-    image: dperson/samba
-    restart: unless-stopped
-
-    ports:
-      - "445:445"
-
-    volumes:
-      - ${HOST_PATH}:/share
-      - ./smb.conf:/etc/samba/smb.conf:ro
-
-    environment:
-      USERID: "${USER_ID}"
-      GROUPID: "${GROUP_ID}"
-
-      USER: "${USER_1};${PASSWORD_1}"
-      USER2: "${USER_2};${PASSWORD_2}"
-      #USER3: ...
-
-    command: '-p'
+Turn on panel:
+```bash
+python3 web_server.py
 ```
 
-
-#### Restart Policy
-| Policy | Description |
-|--------|-------------|
-| `unless-stopped` | Restart unless manually stopped |
-| `always` | Always restart |
-| `on-failure` | Restart only after errors |
-| `no` | Disable automatic restart |
-
-#### adding users
-add another line for another user:
-```yaml
-USER3: "${USER_3};${PASSWORD_3}"
-```
-
-## adding shares
-
-Shares are configured in `smb.conf`, example:
-
-```text
-[Public]
-    path = /share/public
-
-    browseable = yes
-    guest ok = no
-
-    read only = no
-    write list = alice bob
-
-    valid users = alice bob
-
-    force user = smbuser
-    force group = smb
-    create mask = 0660
-    directory mask = 0770
-
-
-[Documents]
-    path = /share/documents
-
-    browseable = yes
-
-    ...
-```
-| Policy | Description                                             |
-|--------|---------------------------------------------------------|
-| `[Public]` | Network share name                                      |
-| `path` | Subdirectory to share                                   |
-| `browseable` | Whether the share is visible when browsing the server   |
-| `guest ok` | Whether guest access is allowed                         |
-| `read only` | Whether the share is read-only                          |
-| `write list` | Users allowed to write to the share (even if read only) |
-| `valid users` | Users allowed to access the share                                                       |
-
-
-## Web panel and configuration (under development):
-
-Open your web browser and type:
+Open your web browser on host and type:
 ```text
 http://localhost:8000/
+```
+
+Or on another machine in the same network:
+```text
+http://SERVER_IP:8000/
 ```
 
 ## Accessing the Share:
