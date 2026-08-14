@@ -1,10 +1,13 @@
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory, session, redirect
 import os
 import re
 from dotenv import load_dotenv, dotenv_values, set_key, unset_key
 import subprocess
 
+load_dotenv()
+
 app = Flask(__name__, static_folder='.', static_url_path='')
+app.secret_key = os.environ.get('SECRET_KEY') #dane trzymane w ciasteczku
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ENV_PATH = os.path.join(BASE_DIR, '.env')
@@ -12,6 +15,31 @@ SMB_CONF_PATH = os.path.join(BASE_DIR, 'smb.conf')
 
 usernames=[]
 
+def login_required(view): #decorator
+    def wrapped(*args, **kwargs):
+        if not session.get('logged_in'):
+            return redirect('/login') #nie zalogowany
+        return view(*args, **kwargs) #zalogowany
+    wrapped.__name__ = view.__name__ #Dla Flasha nie może funkcja nazywać sie wrapped tylko wymaga unikalnej nazwy funkcji dla kontkretnej trasy
+    return wrapped
+
+
+@app.route('/login', methods=['GET', 'POST']) #GET - ktoś chce zobaczyć formularz, POST - ktoś chce się zalogować
+def login():
+    if request.method == 'POST':
+        user = request.form.get('username') #zabiera dane wczytany prez surowy HTML
+        password = request.form.get('password')
+        if user == os.environ.get('ADMIN_USER') and password == os.environ.get('ADMIN_PASSWORD'):
+            session['logged_in'] = True
+            return redirect('/')
+        return "Błędny login lub hasło", 401
+    return send_from_directory(BASE_DIR, 'login.html') #dla GET zwraca po prostu formularz
+
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect('/login')
 
 def read_env_users():
     users = []
@@ -205,11 +233,13 @@ def sync_compose_users():
         f.writelines(new_lines)
 
 @app.route('/')
+@login_required
 def index():
     return send_from_directory(BASE_DIR, 'Panel.html')
 
 
 @app.route('/api/config', methods=['GET'])
+@login_required
 def get_config():
     return jsonify({
         'users': read_env_users(),
@@ -217,6 +247,7 @@ def get_config():
     })
 
 @app.route('/api/apply', methods=['POST'])
+@login_required
 def apply_changes():
     try:
         result = subprocess.run(
@@ -235,6 +266,7 @@ def apply_changes():
     return jsonify({'ok': ok, 'stdout': result.stdout, 'stderr': result.stderr}), (200 if ok else 500)
 
 @app.route('/api/events', methods=['POST'])
+@login_required
 def post_event():
     event = request.get_json(force=True, silent=True) #gets HTTP json request and coverts it to dict
     if not event:
@@ -253,4 +285,4 @@ def post_event():
 
 if __name__ == '__main__':
     load_dotenv()
-    app.run(host='0.0.0.0', port=8000, debug=True)
+    app.run(host='0.0.0.0', port=8000, debug=False)
