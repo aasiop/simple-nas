@@ -2,6 +2,7 @@ from flask import Flask, jsonify, request, send_from_directory, session, redirec
 import os
 import re
 from dotenv import load_dotenv, dotenv_values, set_key, unset_key
+from werkzeug.security import check_password_hash #Flash stoi na Werkzeug więc jest już pobrany
 import subprocess
 
 load_dotenv()
@@ -14,6 +15,7 @@ ENV_PATH = os.path.join(BASE_DIR, '.env')
 SMB_CONF_PATH = os.path.join(BASE_DIR, 'smb.conf')
 
 usernames=[]
+
 
 def login_required(view): #decorator
     def wrapped(*args, **kwargs):
@@ -29,7 +31,7 @@ def login():
     if request.method == 'POST':
         user = request.form.get('username') #zabiera dane wczytany prez surowy HTML
         password = request.form.get('password')
-        if user == os.environ.get('ADMIN_USER') and password == os.environ.get('ADMIN_PASSWORD'):
+        if user == os.environ.get('ADMIN_USER') and check_password_hash(os.environ.get('ADMIN_PASSWORD_HASH', ''), password):
             session['logged_in'] = True
             return redirect('/')
         return "Błędny login lub hasło", 401
