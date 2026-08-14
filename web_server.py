@@ -1,6 +1,7 @@
-from flask import Flask, jsonify, request, send_from_directory, session, redirect
+from flask import Flask, jsonify, request, send_from_directory, session, redirect #session przechowuje dane sesji użytkownika (słownik przypisany do użytkownika)
 import os
 import re
+import time
 from dotenv import load_dotenv, dotenv_values, set_key, unset_key
 from werkzeug.security import check_password_hash #Flash stoi na Werkzeug więc jest już pobrany
 import subprocess
@@ -16,6 +17,25 @@ SMB_CONF_PATH = os.path.join(BASE_DIR, 'smb.conf')
 
 usernames=[]
 
+#ip -> (ile błędnych prób z rzędu, do kiedy zablokowany - timestamp)
+failed_logins = {}
+MAX_ATTEMPTS = 5
+LOCK_SECONDS = 300
+
+def is_locked(ip):
+    count, locked_until = failed_logins.get(ip, (0, 0)) #pobiera ilosc nieudanych logowan, jeśli nie ma (pierwsze logowanie) to daje (0,0) = (ilosc_nieudanych, czas_czekania)
+    return time.time() < locked_until #mniejszy = true, wiekszy = false
+
+def register_failed_attempt(ip): #wywolywane po nieudanej probie
+    count, _ = failed_logins.get(ip, (0, 0))
+    count += 1
+    if count >= MAX_ATTEMPTS:
+        failed_logins[ip] = (count, time.time() + LOCK_SECONDS)
+    else:
+        failed_logins[ip] = (count, 0)
+
+def clear_failed_attempts(ip):
+    failed_logins.pop(ip, None) #usuwa wpis dla danego ip
 
 def login_required(view): #decorator
     def wrapped(*args, **kwargs):
@@ -29,12 +49,19 @@ def login_required(view): #decorator
 @app.route('/login', methods=['GET', 'POST']) #GET - ktoś chce zobaczyć formularz, POST - ktoś chce się zalogować
 def login():
     if request.method == 'POST':
+        ip = request.remote_addr #adres IP, z którego przyszło żądanie, Flask sam to wyciąga z TCP
+
+        if is_locked(ip):
+            return "Too many failed logins, try again later", 429
+
         user = request.form.get('username') #zabiera dane wczytany prez surowy HTML
         password = request.form.get('password')
         if user == os.environ.get('ADMIN_USER') and check_password_hash(os.environ.get('ADMIN_PASSWORD_HASH', ''), password):
-            session['logged_in'] = True
+            clear_failed_attempts(ip)
+            session['logged_in'] = True #ustawiamy zmienna w session
             return redirect('/')
-        return "Błędny login lub hasło", 401
+        register_failed_attempt(ip)
+        return "Incorrect login or password", 401
     return send_from_directory(BASE_DIR, 'login.html') #dla GET zwraca po prostu formularz
 
 
