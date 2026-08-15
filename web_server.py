@@ -62,7 +62,7 @@ def login():
         ip = request.remote_addr #adres IP, z którego przyszło żądanie, Flask sam to wyciąga z TCP
 
         if is_locked(ip):
-            return "Too many failed logins, try again later", 429
+            return redirect('/login?error=locked')
 
         user = request.form.get('username') #zabiera dane wczytany prez surowy HTML
         password = request.form.get('password')
@@ -75,7 +75,7 @@ def login():
             return resp
 
         register_failed_attempt(ip)
-        return "Incorrect login or password", 401
+        return redirect('/login?error=invalid')
     return send_from_directory(BASE_DIR, 'login.html') #dla GET zwraca po prostu formularz
 
 
@@ -295,7 +295,7 @@ def get_config():
 def apply_changes():
     try:
         result = subprocess.run(
-            ["docker", "compose", "up", "-d", "--force-recreate"],
+            ["docker", "compose", "up", "-d", "--force-recreate", "sambanas"],
             cwd=BASE_DIR,
             capture_output=True,
             text=True,
@@ -317,7 +317,6 @@ def post_event():
     if not event:
         return jsonify({'error': 'invalid json'}), 400
 
-    print(event)
     if event.get("entity") == "share":
         change_smb(event)
     elif event.get("entity") == "user":
