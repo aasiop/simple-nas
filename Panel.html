@@ -312,10 +312,15 @@ function togglePassword(username) {
   showUsers(currentUsers);
 }
 
+function getCsrfToken() {
+  const match = document.cookie.match(/(?:^|; )csrf_token=([^;]*)/);
+  return match ? match[1] : '';
+}
+
 async function sendEvent(entity, type, payload) {
   await fetch('/api/events', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
     body: JSON.stringify({ type: type, entity: entity, payload: payload })
   });
   location.reload();
@@ -365,7 +370,10 @@ document.getElementById('apply-btn').addEventListener('click', async function ()
   status.style.color = 'var(--text-dim)';
 
   try {
-    const res = await fetch('/api/apply', { method: 'POST' });
+    const res = await fetch('/api/apply', {
+      method: 'POST',
+      headers: { 'X-CSRF-Token': getCsrfToken() }
+    });
     const data = await res.json();
 
     if (data.ok) {

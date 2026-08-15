@@ -2,6 +2,7 @@ from flask import Flask, jsonify, request, send_from_directory, session, redirec
 import os
 import re
 import time
+import secrets
 from dotenv import load_dotenv, dotenv_values, set_key, unset_key
 from werkzeug.security import check_password_hash #Flash stoi na Werkzeug więc jest już pobrany
 import subprocess
@@ -45,6 +46,15 @@ def login_required(view): #decorator
     wrapped.__name__ = view.__name__ #Dla Flasha nie może funkcja nazywać sie wrapped tylko wymaga unikalnej nazwy funkcji dla kontkretnej trasy
     return wrapped
 
+def csrf_protect(view): #decorator - chroni przed CSRF akcje, które coś zmieniają
+    def wrapped(*args, **kwargs):
+        session_token = session.get('csrf_token') #true/false
+        header_token = request.headers.get('X-CSRF-Token') #true/false
+        if not session_token or not header_token or not secrets.compare_digest(session_token, header_token):
+            return jsonify({'error': 'bad csrf token'}), 403
+        return view(*args, **kwargs)
+    wrapped.__name__ = view.__name__
+    return wrapped
 
 @app.route('/login', methods=['GET', 'POST']) #GET - ktoś chce zobaczyć formularz, POST - ktoś chce się zalogować
 def login():
@@ -59,7 +69,11 @@ def login():
         if user == os.environ.get('ADMIN_USER') and check_password_hash(os.environ.get('ADMIN_PASSWORD_HASH', ''), password):
             clear_failed_attempts(ip)
             session['logged_in'] = True #ustawiamy zmienna w session
-            return redirect('/')
+            session['csrf_token'] = secrets.token_hex(16)
+            resp = redirect('/')
+            resp.set_cookie('csrf_token', session['csrf_token'], httponly=False, samesite='Lax')
+            return resp
+
         register_failed_attempt(ip)
         return "Incorrect login or password", 401
     return send_from_directory(BASE_DIR, 'login.html') #dla GET zwraca po prostu formularz
@@ -277,6 +291,7 @@ def get_config():
 
 @app.route('/api/apply', methods=['POST'])
 @login_required
+@csrf_protect
 def apply_changes():
     try:
         result = subprocess.run(
@@ -296,6 +311,7 @@ def apply_changes():
 
 @app.route('/api/events', methods=['POST'])
 @login_required
+@csrf_protect
 def post_event():
     event = request.get_json(force=True, silent=True) #gets HTTP json request and coverts it to dict
     if not event:
