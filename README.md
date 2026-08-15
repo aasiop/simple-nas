@@ -12,7 +12,8 @@ There is now available web configuration.
 - Persistent storage
 - Multi-user support
 - Multiple shares
-- Web panel
+- Web panel view
+- Web user configuration
 - Lightweight
 
 ## Requirements
@@ -73,19 +74,37 @@ HOST_PATH=/mnt/storage
 USER_ID=1000
 GROUP_ID=1000
 
+SECRET_KEY=REPLACE_ME_generate_with_secrets
+ADMIN_USER=admin
+ADMIN_PASSWORD_HASH=REPLACE_ME_generate_with_werkzeug
+
 ...
 ```
 
-| Variable | Description                    |
-|----------|--------------------------------|
-| `SERVER_NAME` | Docker container name          |
-| `HOST_PATH` | Directory on the host to share |
-| `USER_ID` | Linux user ID                  |
-| `GROUP_ID` | Linux group ID                 |
+| Variable              | Description                          |
+|-----------------------|--------------------------------------|
+| `SERVER_NAME`         | Docker container name                |
+| `HOST_PATH`           | Directory on the host to share       |
+| `USER_ID`             | Linux user ID                        |
+| `GROUP_ID`            | Linux group ID                       |
+| `SECRET_KEY`          | Random string for session management |
+| `ADMIN_USER`          | Login name of admin user             |
+| `ADMIN_PASSWORD_HASH` | Password hash                        |
+
+#### tip:
+Use these commands for:
+- secret key:
+```bash
+python3 -c "import secrets; print(secrets.token_hex(32))
+```
+- admin password:
+```bash
+python3 -c "from werkzeug.security import generate_password_hash as g; print(g('your password'))"
+```
 
 ---
 ## Web panel configuration:
-> WARNING web configuration don't require password. It's still in development! Close it after making changes!
+> WARNING web configuration does not turn on automatic. Put it on autostart!
 
 Turn on panel:
 ```bash
