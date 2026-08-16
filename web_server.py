@@ -14,9 +14,8 @@ app.secret_key = os.environ.get('SECRET_KEY') #dane trzymane w ciasteczku
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ENV_PATH = os.path.join(BASE_DIR, '.env')
-SMB_CONF_PATH = os.path.join(BASE_DIR, 'smb.conf')
+SMB_CONF_PATH = '/etc/samba/smb.conf'
 
-usernames=[]
 
 #ip -> (ile błędnych prób z rzędu, do kiedy zablokowany - timestamp)
 failed_logins = {}
@@ -86,23 +85,12 @@ def logout():
 
 def read_env_users():
     users = []
-    global usernames
-    usernames.clear()
-    users.clear()
-    config = dotenv_values(".env")
-    users_count=0
-
-    for key in config:
-        if key.startswith("USER_"):
-            users_count+=1
-    users_count-=1 #USER_ID is not a user
-
-    for i in range(1, users_count+1):
-        user = "USER_"+ str(i)
-        password = "PASSWORD_"+ str(i)
-        users.append({'username': config.get(user), 'password': config.get(password)})
-        usernames.append(config.get(user)) #for change_env
-
+    result = subprocess.run(["pdbedit", "-L"], capture_output=True, text=True) #komenda samby wypisuje userów: "username:uid:opis"
+    for line in result.stdout.strip().splitlines():
+        if not line:
+            continue
+        username = line.split(":")[0] #bierzemy tylko nazwe uzytkownika
+        users.append({'username': username})
     return users
 
 def add_to_shares(l):
@@ -134,7 +122,7 @@ def read_smb_shares():
     shares = []
     lines=[]
     start=False
-    with open("smb.conf", "r", encoding="utf-8") as f:
+    with open(SMB_CONF_PATH, "r", encoding="utf-8") as f:
         for line in f:
             i=line.strip()
             if start and i!="":
@@ -156,43 +144,23 @@ def read_smb_shares():
     return shares
 
 def change_env(e):
-    global usernames
-
     request_type = e.get("type")
-    c = len(usernames)
+    user = e.get("payload").get("username")
 
     if request_type == "add":
-        user = e.get("payload").get("username")
-        if user not in usernames:
-            user_index = "USER_" + str(c + 1)
-            password_index = "PASSWORD_" + str(c + 1)
-            password = e.get("payload").get("password")
-            set_key(".env", user_index, user, quote_mode="never")
-            set_key(".env", password_index, password, quote_mode="never")
-        else:
-            print(f'User named "{user}" already exists!')
+        password = e.get("payload").get("password")
+        subprocess.run(["adduser", "-D", "-H", "-s", "/sbin/nologin", user], check=False)
+        proc = subprocess.run(
+            ["smbpasswd", "-a", "-s", user],
+            input=f"{password}\n{password}\n",
+            capture_output=True,
+            text=True,
+        )
 
     elif request_type == "remove":
-        value = e.get("payload").get("username")
-        config = dotenv_values(".env")
-        #find index
-        for i in range(1, c+1):
-            del_index="USER_" + str(i)
-            if config.get(del_index) == value:
-                for j in range(i+1, c+1): #We move all indexes down excluding the one we delete
-                    next_user = config.get("USER_" + str(j))
-                    next_pass = config.get("PASSWORD_" + str(j))
+        subprocess.run(["smbpasswd", "-x", user], capture_output=True, text=True)
+        subprocess.run(["deluser", user], check=False)
 
-                    if next_user:
-                        set_key(".env", "USER_" + str(j-1), next_user, quote_mode="never")
-                    if next_pass:
-                        set_key(".env", "PASSWORD_" + str(j-1), next_pass, quote_mode="never")
-
-                #Delete last unused index
-                unset_key(".env", "USER_" + str(c))
-                unset_key(".env", "PASSWORD_" + str(c))
-                break
-    sync_compose_users()
 
 def change_smb(e):
     request_type = e.get("type")
@@ -204,7 +172,7 @@ def change_smb(e):
         if request_type=="add":
             writelist=payload.get("writeList")
             validusers=payload.get("validUsers")
-            with open("smb.conf", "a", encoding="utf-8") as f:
+            with open(SMB_CONF_PATH, "a", encoding="utf-8") as f:
                 f.write(f"""
 
 
@@ -225,7 +193,7 @@ def change_smb(e):
     directory mask = 0770""")
         elif request_type=="remove":
             removing=False
-            with open("smb.conf", encoding="utf-8") as f:
+            with open(SMB_CONF_PATH, encoding="utf-8") as f:
                 kept_lines=[]
                 for line in f:
                     check=line.strip()
@@ -237,43 +205,8 @@ def change_smb(e):
                         kept_lines.append(line)
             while kept_lines and kept_lines[-1].strip() == "": #after last (in order) share deleton removes last empty lines
                 kept_lines.pop()
-            with open("smb.conf", "w", encoding="utf-8") as f:
+            with open(SMB_CONF_PATH, "w", encoding="utf-8") as f:
                 f.writelines(kept_lines)
-
-def sync_compose_users():
-    config = dotenv_values(".env")
-    users_count = sum(1 for key in config if key.startswith("USER_")) - 1
-
-    with open("compose.yaml", encoding="utf-8") as f:
-        lines = f.readlines()
-
-    new_lines = []
-    skip_blank = False
-
-    for line in lines:
-        stripped = line.strip()
-
-        if re.match(r'^USER\d*:', stripped):
-            continue
-
-        if skip_blank and stripped == "":
-            skip_blank = False
-            continue
-
-        new_lines.append(line)
-        skip_blank = False
-
-        if stripped.startswith("GROUPID:"):
-            indent = line[:len(line) - len(line.lstrip())]
-            if users_count > 0:
-                new_lines.append("\n")
-                for i in range(1, users_count + 1):
-                    key = "USER" if i == 1 else f"USER{i}"
-                    new_lines.append(f'{indent}{key}: "${{USER_{i}}};${{PASSWORD_{i}}}"\n')
-            skip_blank = True
-
-    with open("compose.yaml", "w", encoding="utf-8") as f:
-        f.writelines(new_lines)
 
 @app.route('/')
 @login_required
@@ -293,18 +226,11 @@ def get_config():
 @login_required
 @csrf_protect
 def apply_changes():
-    try:
-        result = subprocess.run(
-            ["docker", "compose", "up", "-d", "--force-recreate", "sambanas"],
-            cwd=BASE_DIR,
-            capture_output=True,
-            text=True,
-            timeout=60,
-        )
-    except FileNotFoundError:
-        return jsonify({'ok': False, 'error': 'docker command not found'}), 500
-    except subprocess.TimeoutExpired:
-        return jsonify({'ok': False, 'error': 'command timed out after 60s'}), 500
+    result = subprocess.run(
+        ["smbcontrol", "all", "reload-config"], #wszystkie procesy musza znowu odczytac smb.conf
+        capture_output=True,
+        text=True,
+    )
 
     ok = result.returncode == 0
     return jsonify({'ok': ok, 'stdout': result.stdout, 'stderr': result.stderr}), (200 if ok else 500)

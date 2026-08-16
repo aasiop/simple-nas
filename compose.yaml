@@ -1,17 +1,22 @@
 services:
-  sambanas:
+  home-nas:
+    build: .
     container_name: ${SERVER_NAME}
-    image: dperson/samba
     restart: unless-stopped
 
     ports:
       - "445:445"
+      - "8000:8000"
 
     volumes:
       - ${HOST_PATH}:/share
-      - ./smb.conf:/etc/samba/smb.conf:ro
+      - ./smb.conf:/etc/samba/smb.conf
+      - ./.env:/app/.env
+      - samba-passdb:/var/lib/samba
 
     environment:
       USERID: "${USER_ID}"
       GROUPID: "${GROUP_ID}"
-    command: '-p'
+
+volumes:
+  samba-passdb:
