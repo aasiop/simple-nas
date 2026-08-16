@@ -161,6 +161,16 @@ def change_env(e):
         subprocess.run(["smbpasswd", "-x", user], capture_output=True, text=True)
         subprocess.run(["deluser", user], check=False)
 
+    elif request_type == "reset": #zmiana hasla
+        password = e.get("payload").get("password")
+        #bez -a bo user już istnieje
+        subprocess.run(
+            ["smbpasswd", "-s", user],
+            input=f"{password}\n{password}\n",
+            capture_output=True,
+            text=True,
+        )
+
 
 def change_smb(e):
     request_type = e.get("type")

@@ -225,7 +225,7 @@
 
 let currentUsers = [];
 
-let revealedPasswords = new Set();
+let editingPasswords = new Set();
 
 async function loadConfig() {
   const res = await fetch('/api/config');
@@ -241,8 +241,7 @@ function escapeHtml(str) {
   }[c]));
 }
 
-const EYE_ICON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
-const EYE_OFF_ICON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a19.7 19.7 0 0 1 5.06-5.94M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 8 11 8a19.79 19.79 0 0 1-3.22 4.44"></path><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>';
+const PENCIL_ICON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>';
 
 function showUsers(users) {
   const list = document.getElementById('users-list');
@@ -254,19 +253,18 @@ function showUsers(users) {
   }
 
   list.innerHTML = users.map(u => {
-    const isRevealed = revealedPasswords.has(u.username);
-    const passwordText = isRevealed
-      ? escapeHtml(u.password)
-      : '*'.repeat((u.password || '').length);
+    const isEditing = editingPasswords.has(u.username);
 
     return `
       <div class="item">
         <div class="main">
           <div class="name">${escapeHtml(u.username)}</div>
-          <div class="meta">hasło: <code>${passwordText}</code></div>
+          ${isEditing
+            ? `<div class="meta"><input type="password" id="pw-${escapeHtml(u.username)}" placeholder="new password"></div>`
+            : `<div class="meta">password: <code>••••••••</code></div>`}
         </div>
         <div class="actions">
-          <button class="eye" onclick="togglePassword('${escapeHtml(u.username)}')">${isRevealed ? EYE_OFF_ICON : EYE_ICON}</button>
+          <button class="eye" onclick="togglePasswordEdit('${escapeHtml(u.username)}')">${PENCIL_ICON}</button>
           <button class="del" onclick="removeUser('${escapeHtml(u.username)}')">×</button>
         </div>
       </div>
@@ -303,11 +301,17 @@ function showShares(shares) {
   `).join('');
 }
 
-function togglePassword(username) {
-  if (revealedPasswords.has(username)) {
-    revealedPasswords.delete(username);
+function togglePasswordEdit(username) {
+  if (editingPasswords.has(username)) {
+    const input = document.getElementById(`pw-${username}`);
+    const newPassword = input ? input.value : '';
+    editingPasswords.delete(username);
+    if (newPassword) {
+      sendEvent('user', 'reset', { username: username, password: newPassword });
+      return;
+    }
   } else {
-    revealedPasswords.add(username);
+    editingPasswords.add(username);
   }
   showUsers(currentUsers);
 }
