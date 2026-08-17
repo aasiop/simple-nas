@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -82,7 +82,7 @@
   .tag.on { color: var(--ok); border-color: #2c4a3a; }
   .tag.off { color: var(--danger); border-color: #4a2c2c; }
   .actions { display: flex; flex-direction: row; gap: 6px; align-items: center; flex-shrink: 0; }
-  button.del, button.eye {
+  button.del, button.eye, button.cancel {
     background: transparent;
     border: 1px solid var(--border);
     border-radius: 6px;
@@ -96,6 +96,8 @@
     justify-content: center;
   }
   button.del { color: var(--danger); }
+  button.cancel { color: var(--accent); }
+  button.cancel:hover { background: var(--panel); border-color: var(--accent); }
   button.del:hover { background: var(--danger-dim); border-color: var(--danger); }
   button.eye { color: var(--text-dim); }
   button.eye:hover { background: var(--panel); border-color: var(--accent); color: var(--accent); }
@@ -242,6 +244,7 @@ function escapeHtml(str) {
 }
 
 const PENCIL_ICON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>';
+const CANCEL_ICON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
 
 function showUsers(users) {
   const list = document.getElementById('users-list');
@@ -260,12 +263,13 @@ function showUsers(users) {
         <div class="main">
           <div class="name">${escapeHtml(u.username)}</div>
           ${isEditing
-            ? `<div class="meta"><input type="password" id="pw-${escapeHtml(u.username)}" placeholder="new password"></div>`
+            ? `<div class="meta"><input type="password" id="pw-${escapeHtml(u.username)}" placeholder="new password" onkeydown="if(event.key==='Enter'){event.preventDefault();togglePasswordEdit('${escapeHtml(u.username)}');}"></div>`
             : `<div class="meta">password: <code>••••••••</code></div>`}
         </div>
         <div class="actions">
           <button class="eye" onclick="togglePasswordEdit('${escapeHtml(u.username)}')">${PENCIL_ICON}</button>
-          <button class="del" onclick="removeUser('${escapeHtml(u.username)}')">×</button>
+          ${isEditing ? `<button class="cancel" title="Cancel" onclick="cancelPasswordEdit('${escapeHtml(u.username)}')">${CANCEL_ICON}</button>` : ''}
+          <button class="del" title="Delete user" onclick="removeUser('${escapeHtml(u.username)}')">×</button>
         </div>
       </div>
     `;
@@ -313,6 +317,11 @@ function togglePasswordEdit(username) {
   } else {
     editingPasswords.add(username);
   }
+  showUsers(currentUsers);
+}
+
+function cancelPasswordEdit(username) {
+  editingPasswords.delete(username);
   showUsers(currentUsers);
 }
 

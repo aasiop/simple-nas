@@ -160,6 +160,7 @@ def change_env(e):
     elif request_type == "remove":
         subprocess.run(["pdbedit", "-x", "-u", user], capture_output=True, text=True)
         subprocess.run(["deluser", user], check=False)
+        subprocess.run(["delgroup", user], check=False)
 
     elif request_type == "reset": #zmiana hasla
         password = e.get("payload").get("password")
