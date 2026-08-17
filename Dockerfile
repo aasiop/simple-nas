@@ -1,8 +1,10 @@
 FROM dperson/samba
 
-RUN apk add --no-cache python3 py3-pip # na tym stoi obraz
+# na tym stoi obraz
+RUN apk add --no-cache python3 py3-pip
 
-COPY requirements.txt /app/requirements.txt # dajemy w apke, żeby na nowo nie instalować wszystkich pakietów
+# dajemy w apke, żeby na nowo nie instalować wszystkich pakietów
+COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
 COPY web_server.py Panel.html login.html /app/

@@ -158,7 +158,7 @@ def change_env(e):
         )
 
     elif request_type == "remove":
-        subprocess.run(["smbpasswd", "-x", user], capture_output=True, text=True)
+        subprocess.run(["pdbedit", "-x", "-u", user], capture_output=True, text=True)
         subprocess.run(["deluser", user], check=False)
 
     elif request_type == "reset": #zmiana hasla
