@@ -2,7 +2,9 @@
 set -e #w przypadku awarii skrypt zwroci błąd zamiast starać się ciągnąć dalej
 
 for u in $(pdbedit -L 2>/dev/null | cut -d: -f1); do
-    id "$u" >/dev/null 2>&1 || adduser -D -H -s /sbin/nologin "$u"
+    if ! id "$u" >/dev/null 2>&1; then
+        adduser -D -H -s /sbin/nologin "$u"
+    fi
 done
 
 #$ to proces w tle

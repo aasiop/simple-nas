@@ -218,7 +218,7 @@
   </div>
 
   <section class="card" style="margin-top: 20px;">
-    <button id="apply-btn" class="submit" style="width: 100%;">Save changes (restart docker container)</button>
+    <button id="apply-btn" class="submit" style="width: 100%;">Save changes (reload Samba config)</button>
     <div id="apply-status" style="margin-top: 10px; font-size: 12px; color: var(--text-dim);"></div>
   </section>
 </div>
@@ -379,7 +379,7 @@ document.getElementById('apply-btn').addEventListener('click', async function ()
   const status = document.getElementById('apply-status');
 
   btn.disabled = true;
-  status.textContent = 'Restarting container...';
+  status.textContent = 'Reloading Samba config...';
   status.style.color = 'var(--text-dim)';
 
   try {
@@ -390,7 +390,7 @@ document.getElementById('apply-btn').addEventListener('click', async function ()
     const data = await res.json();
 
     if (data.ok) {
-      status.textContent = 'Done - container is running with the new config.';
+      status.textContent = 'Done - Samba is now running with the new config.';
       status.style.color = 'var(--ok)';
     } else {
       status.textContent = 'Error: ' + (data.error || data.stderr || 'unknown error');

@@ -25,7 +25,7 @@ def is_locked(ip):
     return time.time() < locked_until #mniejszy = true, wiekszy = false
 
 def register_failed_attempt(ip): #wywolywane po nieudanej probie
-    count, _ = failed_logins.get(ip, (0, 0))
+    count, _ = failed_logins.get(ip, (0, 0)) #ip, (błędy, blokada)
     count += 1
     if count >= MAX_ATTEMPTS:
         failed_logins[ip] = (count, time.time() + LOCK_SECONDS)
@@ -35,7 +35,7 @@ def register_failed_attempt(ip): #wywolywane po nieudanej probie
 def clear_failed_attempts(ip):
     failed_logins.pop(ip, None) #usuwa wpis dla danego ip
 
-def login_required(view): #decorator
+def login_required(view):
     def wrapped(*args, **kwargs):
         if not session.get('logged_in'):
             return redirect('/login') #nie zalogowany
@@ -45,10 +45,10 @@ def login_required(view): #decorator
 
 def csrf_protect(view): #decorator - chroni przed CSRF akcje, które coś zmieniają
     def wrapped(*args, **kwargs):
-        session_token = session.get('csrf_token') #true/false
+        session_token = session.get('csrf_token') #true/false czy udalo sie zabrac token
         header_token = request.headers.get('X-CSRF-Token') #true/false
         if not session_token or not header_token or not secrets.compare_digest(session_token, header_token):
-            return jsonify({'error': 'bad csrf token'}), 403
+            return jsonify({'error': 'bad csrf token'}), 403 #403 - forbidden (rozpoznano żądanie, ale odmówiono dostępu)
         return view(*args, **kwargs)
     wrapped.__name__ = view.__name__
     return wrapped
@@ -135,7 +135,7 @@ def read_smb_shares():
                     lines.append('name = '+section)
 
                     start=True
-    # obsługa ostatniej sekcji
+    #obsługa ostatniej sekcji
     if start and lines:
         shares.append(add_to_shares(lines[0:-1]))
 
@@ -148,7 +148,7 @@ def change_env(e):
     if request_type == "add":
         password = e.get("payload").get("password")
         subprocess.run(["adduser", "-D", "-H", "-s", "/sbin/nologin", user], check=False)
-        proc = subprocess.run(
+        subprocess.run(
             ["smbpasswd", "-a", "-s", user],
             input=f"{password}\n{password}\n",
             capture_output=True,
