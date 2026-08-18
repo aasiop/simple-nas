@@ -1,9 +1,8 @@
 from flask import Flask, jsonify, request, send_from_directory, session, redirect #session przechowuje dane sesji użytkownika (słownik przypisany do użytkownika)
 import os
-import re
 import time
 import secrets
-from dotenv import load_dotenv, dotenv_values, set_key, unset_key
+from dotenv import load_dotenv
 from werkzeug.security import check_password_hash #Flash stoi na Werkzeug więc jest już pobrany
 import subprocess
 
@@ -13,7 +12,6 @@ app = Flask(__name__, static_folder='.', static_url_path='')
 app.secret_key = os.environ.get('SECRET_KEY') #dane trzymane w ciasteczku
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-ENV_PATH = os.path.join(BASE_DIR, '.env')
 SMB_CONF_PATH = '/etc/samba/smb.conf'
 
 
