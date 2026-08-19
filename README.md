@@ -6,11 +6,17 @@ The container uses the `dperson/samba` image and exposes selected host directori
 
 There is available web configuration:
 
+---
+
 - Login panel
+
 ![Login](./screenshots/login.png)
 
 - Configuration panel
+
 ![Configuration panel](./screenshots/panel.png)
+
+---
 
 ## Features
 
@@ -21,10 +27,12 @@ There is available web configuration:
 - Web configuration panel
 - Lightweight
 
+---
+
 ## Requirements
 - Docker
 - Docker Compose
-- Python
+- Python 3.9+
 - OpenSSL
 - Internet connection for initial setup
 
@@ -58,6 +66,14 @@ docker ps
 ```
 
 After starting the container, open the web configuration panel to configure users and shares.
+
+---
+
+### Security!
+- Do not expose port 8000 directly to the Internet.
+- Do not expose SMB/445 to the Internet.
+- Use the web panel only inside a trusted network or behind a properly configured reverse proxy/VPN.
+- Use strong administrator credentials.
 
 ---
 
@@ -168,6 +184,7 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 python3 -c "from werkzeug.security import generate_password_hash as g; print(g('your password'))"
 ```
 
+---
 
 ## License
 This project is licensed under the MIT License.
