@@ -1,10 +1,10 @@
-# Simple NAS
+# LiteNAS
 
-Simple lightweight NAS file server based on Samba running inside a Docker container. Works on any system capable of running Docker
+Turn any Docker-capable machine into your own simple home file server. LiteNAS lets you share folders over your local network using SMB/Samba and manage your server through a lightweight web interface.
 
-The container uses the `dperson/samba` image and exposes selected host directories as network shares.
+Instead of installing a complete NAS operating system just to share a few drives or folders, you can run LiteNAS alongside the rest of your services and keep your setup under your control.
 
-There is available web configuration:
+LiteNAS keeps things focused on what you actually need: file sharing, a small web configuration panel, and Docker-based deployment.
 
 ---
 
@@ -42,17 +42,17 @@ There is available web configuration:
 
 Clone the repository:  
 ```bash
-git clone https://github.com/aasiop/simple-nas.git
+git clone https://github.com/aasiop/LiteNAS.git
 ```
 
 Enter repository:  
 ```bash
-cd simple-nas
+cd LiteNAS
 ```
 
 Run the setup script. It will interactively ask for the server name, host directory and website administrator credentials, then generate the .env and smb.conf files automatically.  
 ```bash
-./setup.sh
+sh setup.sh
 ```
 
 Start the container:
@@ -69,7 +69,7 @@ After starting the container, open the web configuration panel to configure user
 
 ---
 
-### Security!
+## Security
 - Do not expose port 8000 directly to the Internet.
 - Do not expose SMB/445 to the Internet.
 - Use the web panel only inside a trusted network or behind a properly configured reverse proxy/VPN.
@@ -160,8 +160,6 @@ GROUP_ID=1000
 SECRET_KEY=REPLACE_ME_generate_with_secrets
 ADMIN_USER=admin
 ADMIN_PASSWORD_HASH=REPLACE_ME_generate_with_werkzeug
-
-...
 ```
 
 | Variable              | Description                          |
