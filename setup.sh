@@ -41,7 +41,7 @@ SECRET_KEY=$(openssl rand -hex 32)
 #Tworzy kontener i instaluje tam pakiet oraz tworzy hash hasła po czym się usuwa
 echo "Generating password hash (pulling a small python image, once)..."
 ADMIN_PASSWORD_HASH=$(docker run --rm -e PW="$ADMIN_PASSWORD" python:3-alpine sh -c \
-    'pip install -q werkzeug && python3 -c \
+    'pip install -q --root-user-action=ignore werkzeug && python3 -c \
     "import os; from werkzeug.security import generate_password_hash as g; print(g(os.environ[\"PW\"]))"')
 
 
@@ -50,9 +50,9 @@ SERVER_NAME=${SERVER_NAME}
 HOST_PATH=${HOST_PATH}
 USER_ID=${USER_ID}
 GROUP_ID=${GROUP_ID}
-SECRET_KEY=${SECRET_KEY}
+SECRET_KEY='${SECRET_KEY}'
 ADMIN_USER=${ADMIN_USER}
-ADMIN_PASSWORD_HASH=${ADMIN_PASSWORD_HASH}
+ADMIN_PASSWORD_HASH='${ADMIN_PASSWORD_HASH}'
 EOF
 
 cat > smb.conf << EOF
