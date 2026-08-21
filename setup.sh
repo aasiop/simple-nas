@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-#Nie nadpisuj czegoś, co już istnieje, bez pytania
+#Do not overwrite something that already exists without asking
 for f in .env smb.conf; do
     if [ -f "$f" ]; then
         printf "%s already exists. Overwrite? [y/N] " "$f"
@@ -13,7 +13,7 @@ for f in .env smb.conf; do
     fi
 done
 
-#Pytamy o nazwe serwera a jak nie zostanie wpisana to będzie to home-nas
+#Ask for the server name, and if none is entered, use home-nas
 printf "Server name: "
 read -r SERVER_NAME
 SERVER_NAME=${SERVER_NAME:-home-nas}
@@ -26,7 +26,7 @@ printf "Admin user login: "
 read -r ADMIN_USER
 ADMIN_USER=${ADMIN_USER:-admin}
 
-#To samo ale nie widać wpisywanego hasła
+#The same, but the entered password is not displayed
 printf "Admin password: "
 stty -echo
 read -r ADMIN_PASSWORD
@@ -38,7 +38,7 @@ GROUP_ID=$(id -g)
 
 SECRET_KEY=$(openssl rand -hex 32)
 
-#Tworzy kontener i instaluje tam pakiet oraz tworzy hash hasła po czym się usuwa
+#Creates a container, installs the package there, creates the password hash, and then removes the container
 echo "Generating password hash (pulling a small python image, once)..."
 ADMIN_PASSWORD_HASH=$(docker run --rm -e PW="$ADMIN_PASSWORD" python:3-alpine sh -c \
     'pip install -q --root-user-action=ignore werkzeug && python3 -c \

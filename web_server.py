@@ -1,30 +1,30 @@
-from flask import Flask, jsonify, request, send_from_directory, session, redirect #session przechowuje dane sesji użytkownika (słownik przypisany do użytkownika)
+from flask import Flask, jsonify, request, send_from_directory, session, redirect #session stores user session data (a dictionary assigned to the user)
 import os
 import time
 import secrets
 from dotenv import load_dotenv
-from werkzeug.security import check_password_hash #Flash stoi na Werkzeug więc jest już pobrany
+from werkzeug.security import check_password_hash #Flask is built on Werkzeug, so it is already installed
 import subprocess
 
 load_dotenv()
 
 app = Flask(__name__, static_folder='.', static_url_path='')
-app.secret_key = os.environ.get('SECRET_KEY') #dane trzymane w ciasteczku
+app.secret_key = os.environ.get('SECRET_KEY') #data stored in the cookie
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SMB_CONF_PATH = '/etc/samba/smb.conf'
 
 
-#ip -> (ile błędnych prób z rzędu, do kiedy zablokowany - timestamp)
+#ip, (number of consecutive failed attempts, until when it is locked - timestamp)
 failed_logins = {}
 MAX_ATTEMPTS = 5
 LOCK_SECONDS = 300
 
 def is_locked(ip):
-    count, locked_until = failed_logins.get(ip, (0, 0)) #pobiera ilosc nieudanych logowan, jeśli nie ma (pierwsze logowanie) to daje (0,0) = (ilosc_nieudanych, czas_czekania)
-    return time.time() < locked_until #mniejszy = true, wiekszy = false
+    count, locked_until = failed_logins.get(ip, (0, 0)) #gets the number of failed logins, if there is no entry (first login), it returns (0,0)
+    return time.time() < locked_until #smaller = true, greater = false
 
-def register_failed_attempt(ip): #wywolywane po nieudanej probie
+def register_failed_attempt(ip): #called after a failed attempt
     count, _ = failed_logins.get(ip, (0, 0)) #ip, (błędy, blokada)
     count += 1
     if count >= MAX_ATTEMPTS:
@@ -33,30 +33,30 @@ def register_failed_attempt(ip): #wywolywane po nieudanej probie
         failed_logins[ip] = (count, 0)
 
 def clear_failed_attempts(ip):
-    failed_logins.pop(ip, None) #usuwa wpis dla danego ip
+    failed_logins.pop(ip, None)
 
 def login_required(view):
     def wrapped(*args, **kwargs):
         if not session.get('logged_in'):
-            return redirect('/login') #nie zalogowany
-        return view(*args, **kwargs) #zalogowany
-    wrapped.__name__ = view.__name__ #Dla Flasha nie może funkcja nazywać sie wrapped tylko wymaga unikalnej nazwy funkcji dla kontkretnej trasy
+            return redirect('/login') #not logged in
+        return view(*args, **kwargs) #logged in
+    wrapped.__name__ = view.__name__ #Flask requires a unique function name for each route instead of all of them being named wrapped
     return wrapped
 
-def csrf_protect(view): #decorator - chroni przed CSRF akcje, które coś zmieniają
+def csrf_protect(view): #decorator - protect modifying actions (CSRF)
     def wrapped(*args, **kwargs):
-        session_token = session.get('csrf_token') #true/false czy udalo sie zabrac token
-        header_token = request.headers.get('X-CSRF-Token') #true/false
+        session_token = session.get('csrf_token') #used as true/false - if able to retrieve token
+        header_token = request.headers.get('X-CSRF-Token') #used as true/false - retrieves token from the request header
         if not session_token or not header_token or not secrets.compare_digest(session_token, header_token):
-            return jsonify({'error': 'bad csrf token'}), 403 #403 - forbidden (rozpoznano żądanie, ale odmówiono dostępu)
+            return jsonify({'error': 'bad csrf token'}), 403 #403 - forbidden (the request was recognized but access was denied)
         return view(*args, **kwargs)
     wrapped.__name__ = view.__name__
     return wrapped
 
-@app.route('/login', methods=['GET', 'POST']) #GET - ktoś chce zobaczyć formularz, POST - ktoś chce się zalogować
+@app.route('/login', methods=['GET', 'POST']) #GET - someone wants to see the form, POST - someone wants to log in
 def login():
     if request.method == 'POST':
-        ip = request.remote_addr #adres IP, z którego przyszło żądanie, Flask sam to wyciąga z TCP
+        ip = request.remote_addr #IP address from which the request came, Flask retrieves it from TCP
 
         if is_locked(ip):
             return redirect('/login?error=locked')
@@ -65,7 +65,7 @@ def login():
         password = request.form.get('password')
         if user == os.environ.get('ADMIN_USER') and check_password_hash(os.environ.get('ADMIN_PASSWORD_HASH', ''), password):
             clear_failed_attempts(ip)
-            session['logged_in'] = True #ustawiamy zmienna w session
+            session['logged_in'] = True #sets a variable in the session
             session['csrf_token'] = secrets.token_hex(16)
             resp = redirect('/')
             resp.set_cookie('csrf_token', session['csrf_token'], httponly=False, samesite='Lax')
@@ -73,7 +73,7 @@ def login():
 
         register_failed_attempt(ip)
         return redirect('/login?error=invalid')
-    return send_from_directory(BASE_DIR, 'login.html') #dla GET zwraca po prostu formularz
+    return send_from_directory(BASE_DIR, 'login.html') #for GET, simply returns the form
 
 
 @app.route('/logout')
@@ -83,11 +83,11 @@ def logout():
 
 def read_env_users():
     users = []
-    result = subprocess.run(["pdbedit", "-L"], capture_output=True, text=True) #komenda samby wypisuje userów: "username:uid:opis"
+    result = subprocess.run(["pdbedit", "-L"], capture_output=True, text=True) #lists users: "username:uid:description"
     for line in result.stdout.strip().splitlines():
         if not line:
             continue
-        username = line.split(":")[0] #bierzemy tylko nazwe uzytkownika
+        username = line.split(":")[0] #take only the username
         users.append({'username': username})
     return users
 
@@ -135,7 +135,7 @@ def read_smb_shares():
                     lines.append('name = '+section)
 
                     start=True
-    #obsługa ostatniej sekcji
+    #taking the last section
     if start and lines:
         shares.append(add_to_shares(lines[0:-1]))
 
@@ -160,9 +160,9 @@ def change_env(e):
         subprocess.run(["deluser", user], check=False)
         subprocess.run(["delgroup", user], check=False)
 
-    elif request_type == "reset": #zmiana hasla
+    elif request_type == "reset": #password change
         password = e.get("payload").get("password")
-        #bez -a bo user już istnieje
+        #without -a because the user already exists
         subprocess.run(
             ["smbpasswd", "-s", user],
             input=f"{password}\n{password}\n",
@@ -212,7 +212,7 @@ def change_smb(e):
                         removing=True
                     if not removing:
                         kept_lines.append(line)
-            while kept_lines and kept_lines[-1].strip() == "": #after last (in order) share deleton removes last empty lines
+            while kept_lines and kept_lines[-1].strip() == "": #after last (in order) share deleton removes remaining empty lines
                 kept_lines.pop()
             with open(SMB_CONF_PATH, "w", encoding="utf-8") as f:
                 f.writelines(kept_lines)
@@ -236,7 +236,7 @@ def get_config():
 @csrf_protect
 def apply_changes():
     result = subprocess.run(
-        ["smbcontrol", "all", "reload-config"], #wszystkie procesy musza znowu odczytac smb.conf
+        ["smbcontrol", "all", "reload-config"], #all processes must read smb.conf again
         capture_output=True,
         text=True,
     )

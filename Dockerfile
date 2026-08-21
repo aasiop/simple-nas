@@ -1,9 +1,9 @@
 FROM dperson/samba
 
-# na tym stoi obraz
+#Install Python and pip without keeping the package cache
 RUN apk add --no-cache python3 py3-pip
 
-# dajemy w apke, żeby na nowo nie instalować wszystkich pakietów
+#Copy files to container
 COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
@@ -13,5 +13,6 @@ WORKDIR /app
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
+#Run the entrypoint script when the container starts
 EXPOSE 445 8000
 ENTRYPOINT ["/entrypoint.sh"]
