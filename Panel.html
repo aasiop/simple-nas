@@ -160,6 +160,8 @@
     <h1>LiteNAS - control panel</h1>
   </header>
 
+  <div id="global-error" style="display:none; background:#2a1a1a; border:1px solid #4a2c2c; color:var(--danger); font-size:13px; padding:10px 12px; border-radius:8px; margin-bottom:16px;"></div>
+
   <div class="grid">
     <section class="card">
       <h2>Users <span class="count" id="users-count">0</span></h2>
@@ -330,13 +332,39 @@ function getCsrfToken() {
   return match ? match[1] : '';
 }
 
+function showGlobalError(message) {
+  const box = document.getElementById('global-error');
+  box.textContent = message;
+  box.style.display = 'block';
+}
+
+function clearGlobalError() {
+  const box = document.getElementById('global-error');
+  box.style.display = 'none';
+  box.textContent = '';
+}
+
 async function sendEvent(entity, type, payload) {
-  await fetch('/api/events', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
-    body: JSON.stringify({ type: type, entity: entity, payload: payload })
-  });
-  location.reload();
+  clearGlobalError();
+  try {
+    const res = await fetch('/api/events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+      body: JSON.stringify({ type: type, entity: entity, payload: payload })
+    });
+
+    let data = null;
+    try { data = await res.json(); } catch (e) { /* no body / not json */ }
+
+    if (!res.ok) {
+      showGlobalError((data && data.error) ? data.error : `Request failed (HTTP ${res.status}).`);
+      return;
+    }
+
+    location.reload();
+  } catch (err) {
+    showGlobalError('Could not reach the server.');
+  }
 }
 
 function removeUser(username) {

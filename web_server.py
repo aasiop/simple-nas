@@ -1,6 +1,7 @@
 from flask import Flask, jsonify, request, send_from_directory, session, redirect #session stores user session data (a dictionary assigned to the user)
 import os
 import time
+import re
 import secrets
 from dotenv import load_dotenv
 from werkzeug.security import check_password_hash #Flask is built on Werkzeug, so it is already installed
@@ -144,9 +145,18 @@ def read_smb_shares():
 def change_env(e):
     request_type = e.get("type")
     user = e.get("payload").get("username")
+    if not isinstance(user, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,32}", user):
+        return False, "Invalid username. Only letters, digits, _ and - are allowed (max 32 chars)."
 
     if request_type == "add":
         password = e.get("payload").get("password")
+        if (not isinstance(password, str)or not (
+                1 <= len(password) <= 128) or
+                "\n" in password or
+                "\r" in password or
+                not re.fullmatch(r"[A-Za-z0-9!@#$%^&*()_+\-=\[\]{};:'\",.<>/?\\|`~ ]+", password)
+            ):
+            return False, "Invalid password."
         subprocess.run(["adduser", "-D", "-H", "-s", "/sbin/nologin", user], check=False)
         subprocess.run(
             ["smbpasswd", "-a", "-s", user],
@@ -154,39 +164,68 @@ def change_env(e):
             capture_output=True,
             text=True,
         )
+        return True, None
 
     elif request_type == "remove":
         subprocess.run(["pdbedit", "-x", "-u", user], capture_output=True, text=True)
         subprocess.run(["deluser", user], check=False)
         subprocess.run(["delgroup", user], check=False)
+        return True, None
 
     elif request_type == "reset": #password change
         password = e.get("payload").get("password")
-        #without -a because the user already exists
+        if (not isinstance(password, str) or not (
+                1 <= len(password) <= 128) or
+                "\n" in password or
+                "\r" in password or
+                not re.fullmatch(r"[A-Za-z0-9!@#$%^&*()_+\-=\[\]{};:'\",.<>/?\\|`~ ]+", password)
+        ):
+            return False, "Invalid password."
         subprocess.run(
-            ["smbpasswd", "-s", user],
+            ["smbpasswd", "-s", user], #without -a because the user already exists
             input=f"{password}\n{password}\n",
             capture_output=True,
             text=True,
         )
+        return True, None
+    return False, "unknown action type"
 
 
 def change_smb(e):
     request_type = e.get("type")
 
     payload = e.get("payload")
-    if payload.get('name') == 'global':
-        print("global is forbidden share name, sorry :(")
-    else:
-        if request_type=="add":
-            writelist=payload.get("writeList")
-            validusers=payload.get("validUsers")
-            with open(SMB_CONF_PATH, "a", encoding="utf-8") as f:
-                f.write(f"""
+    name = payload.get("name")
+
+    if not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,32}", name):
+        return False, "Invalid share name. Only letters, digits, _ and - are allowed (max 32 chars)"
+
+    if name.lower() == 'global':
+        return False, "global is forbidden share name, sorry :("
+
+    if request_type == "add":
+        payload_p = payload.get("path")
+        writelist = payload.get("writeList")
+        validusers = payload.get("validUsers")
+
+        if (not isinstance(payload_p, str)
+                or not payload_p.startswith("/share/")
+                or ".." in payload_p.split("/")
+                or not re.fullmatch(r"[A-Za-z0-9_\-./ ]+", payload_p)):
+            return False, "Share path should start with /share/, must not contain '..', and may only contain letters, digits, spaces, '_', '-', '.', '/'"
+        if not isinstance(writelist, list) or not all(
+                isinstance(u, str) and re.fullmatch(r"[A-Za-z0-9_-]{1,32}", u) for u in writelist):
+            return False, "Invalid username added to share writelist"
+        if not isinstance(validusers, list) or not all(
+                isinstance(u, str) and re.fullmatch(r"[A-Za-z0-9_-]{1,32}", u) for u in validusers):
+            return False, "Invalid username added to share validusers"
+
+        with open(SMB_CONF_PATH, "a", encoding="utf-8") as f:
+            f.write(f"""
 
 
 [{payload.get("name")}]
-    path = {payload.get("path")}
+    path = {payload_p}
         
     browseable = {"yes" if payload.get("browseable") else "no"}
     guest ok = {"yes" if payload.get("guest") else "no"}
@@ -200,22 +239,25 @@ def change_smb(e):
     force group = smb
     create mask = 0660
     directory mask = 0770""")
-        elif request_type=="remove":
-            removing=False
-            with open(SMB_CONF_PATH, encoding="utf-8") as f:
-                kept_lines=[]
-                for line in f:
-                    check=line.strip()
-                    if removing and check.startswith("["):
-                        removing=False
-                    if check == f"[{payload.get('name')}]":
-                        removing=True
-                    if not removing:
-                        kept_lines.append(line)
-            while kept_lines and kept_lines[-1].strip() == "": #after last (in order) share deleton removes remaining empty lines
-                kept_lines.pop()
-            with open(SMB_CONF_PATH, "w", encoding="utf-8") as f:
-                f.writelines(kept_lines)
+        return True, None
+    elif request_type=="remove":
+        removing=False
+        with open(SMB_CONF_PATH, encoding="utf-8") as f:
+            kept_lines=[]
+            for line in f:
+                check=line.strip()
+                if removing and check.startswith("["):
+                    removing=False
+                if check == f"[{payload.get('name')}]":
+                    removing=True
+                if not removing:
+                    kept_lines.append(line)
+        while kept_lines and kept_lines[-1].strip() == "": #after last (in order) share deleton removes remaining empty lines
+            kept_lines.pop()
+        with open(SMB_CONF_PATH, "w", encoding="utf-8") as f:
+            f.writelines(kept_lines)
+        return True, None
+    return False, "Unknown action type"
 
 @app.route('/')
 @login_required
@@ -252,12 +294,16 @@ def post_event():
     if not event:
         return jsonify({'error': 'invalid json'}), 400
 
-    if event.get("entity") == "share":
-        change_smb(event)
-    elif event.get("entity") == "user":
-        change_env(event)
+    entity = event.get("entity")
+    if entity=="share":
+        ok, error = change_smb(event)
+    elif entity=="user":
+        ok, error = change_env(event)
     else:
-        print("html broken")
+        return jsonify({'error': 'unknown entity'}), 400
+
+    if not ok:
+        return jsonify({'error': error}), 400
 
     return jsonify({'status': 'received', 'action': event.get('action')}), 200
 
