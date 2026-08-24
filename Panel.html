@@ -287,7 +287,11 @@ function showShares(shares) {
     return;
   }
 
-  list.innerHTML = shares.map(s => `
+  const knownUsers = currentUsers.map(u => u.username);
+
+  list.innerHTML = shares.map(s => {
+    const missingUsers = [...new Set([...s.validUsers, ...s.writeList])].filter(u => !knownUsers.includes(u));
+    return `
     <div class="item">
       <div class="main">
         <div class="name">[${escapeHtml(s.name)}]</div>
@@ -301,10 +305,12 @@ function showShares(shares) {
           <span class="tag ${s.guest ? 'on' : 'off'}">guest: ${s.guest ? 'yes' : 'no'}</span>
           <span class="tag ${s.readonly ? 'off' : 'on'}">read only: ${s.readonly ? 'yes' : 'no'}</span>
         </div>
+        ${missingUsers.length ? `<div class="meta" style="color: var(--danger); margin-top: 6px;">warning: unknown user(s): ${escapeHtml(missingUsers.join(', '))}</div>` : ''}
       </div>
       <button class="del" onclick="removeShare('${escapeHtml(s.name)}')">×</button>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 function togglePasswordEdit(username) {
