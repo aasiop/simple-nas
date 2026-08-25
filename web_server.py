@@ -9,7 +9,7 @@ import subprocess
 
 load_dotenv()
 
-app = Flask(__name__, static_folder='.', static_url_path='')
+app = Flask(__name__, static_folder=None)
 app.secret_key = os.environ.get('SECRET_KEY') #data stored in the cookie
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
